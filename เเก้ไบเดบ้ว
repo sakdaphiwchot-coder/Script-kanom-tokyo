@@ -1,0 +1,390 @@
+--------------------------------------------------------------------------
+-- AKIHUB - ONLY AUTO FARM & AUTO QUEST (CLEAN VERSION)
+--------------------------------------------------------------------------
+local startTime = tick()
+
+local NothingLibrary = loadstring(game:HttpGetAsync(
+    'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
+))()
+
+local Windows = NothingLibrary.new({
+    Title = "AKIHUB",
+    Description = "Kanom tokyo : กำลังโหลดเวลา...",
+    Keybind = Enum.KeyCode.RightControl,
+    Logo = 'http://www.roblox.com/asset/?id=123772963717609'
+})
+
+task.wait(1)
+
+-- แสดงเวลาการเล่นบน UI
+local function findDescriptionLabel()
+    for _, v in pairs(game:GetDescendants()) do
+        if v:IsA("TextLabel") and string.find(v.Text, "Kanom tokyo") then
+            return v
+        end
+    end
+end
+
+local descLabel = findDescriptionLabel()
+task.spawn(function()
+    while true do
+        if descLabel then
+            local elapsed = math.floor(tick() - startTime)
+            local hours = math.floor(elapsed / 3600)
+            local minutes = math.floor((elapsed % 3600) / 60)
+            local seconds = elapsed % 60
+            local timeText = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+            descLabel.Text = "Kanom tokyo : PlayTime " .. timeText
+        end
+        task.wait(1)
+    end
+end)
+
+-- สร้างหน้าต่าง UI
+local TabFrame = Windows:NewTab({
+    Title = "Main",
+    Description = "Farm Tab",
+    Icon = "rbxassetid://80313090537874"
+})
+
+local Section = TabFrame:NewSection({
+    Title = "Auto Farm & Quest",
+    Icon = "rbxassetid://116520925666989",
+    Position = "Left"
+})
+
+-- Global Configuration Settings
+_G.AutoFarm = false
+_G.TweenSpeed = 180
+_G.AttackDelay = 0.001
+_G.FlyPosition = "Below"
+_G.DistanceFromEnemy = 6
+
+-- Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local GuiService = game:GetService("GuiService")
+local RunService = game:GetService("RunService")
+
+-- Player Configuration
+local Player = Players.LocalPlayer
+local hasInitialized = false
+
+-- ลบแท่นฟาร์มเก่าที่อาจค้างอยู่
+for _, v in pairs(workspace:GetChildren()) do
+    if v.Name == "FarmPlatform" then
+        v:Destroy()
+    end
+end
+
+-- ฟังก์ชันโจมตี (ตีไว)
+local function NormalAttack()
+    pcall(function()
+        local args = { { "NormalAttack", "\014" } }
+        ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
+    end)
+end
+
+-- ฟังก์ชันติดตั้งอาวุธ (กด E)
+local function PressE()
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+    task.wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+end
+
+-- ตรวจสอบการตายเพื่อใส่อาวุธใหม่เมื่อเกิด
+local function IsPlayerDead()
+    local char = Player.Character
+    if not char then return true end
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then return true end
+    return humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if _G.AutoFarm and IsPlayerDead() then
+            task.wait(7)
+            if _G.AutoFarm then
+                PressE()
+            end
+        end
+    end
+end)
+
+-- ฟังก์ชันดึงเลเวลผู้เล่น
+local function GetLevel()
+    local success, level = pcall(function()
+        return Player:WaitForChild("Data"):WaitForChild("Level").Value
+    end)
+    if success and type(level) == "number" then
+        return level
+    else
+        return 1
+    end
+end
+
+-- ข้อมูลเควสตามระดับเลเวล (แก้ไข Syntax เครื่องหมายคอมมาแล้ว)
+local QuestTable = {
+    {1, 49, "QuestGiver (Lv.1-Lv.50)", "Human,Athlete"},
+    {50, 149, "QuestGiver (Lv.50-Lv.150)", "Rank 2 Investigator"},
+    {150, 249, "QuestGiver (Lv.150-Lv.250)", "Bulk Ghoul"},
+    {250, 349, "QuestGiver (Lv.250-Lv.350)", "Rank 1 Investigator"},
+    {350, 399, "QuestGiver (Lv.350-Lv.400)", "Serpent Ghoul"},
+    {400, 449, "QuestGiver (Lv.400-Lv.450)", "Rin Ghoul"},
+    {450, 499, "QuestGiver (Lv.450-Lv.500)", "First class Investigator"},
+    {500, 549, "QuestGiver (Lv.500-Lv.550)", "Aogiri"},
+    {550, 599, "QuestGiver (Lv.550-Lv.600)", "Akira"},
+    {600, 699, "QuestGiver (Lv.600-Lv.700)", "Enforcer"},
+    {700, 800, "QuestGiver (Lv.700-Lv.800)", "Phantom"},  -- เติมคอมมาตรงนี้แล้ว
+    {1100, 1200, "QuestGiver (Lv.1100-Lv.1200)", "Faulty Tatara Ghoul"}
+}
+
+local function GetQuestData()
+    local lv = GetLevel()
+    for _, q in ipairs(QuestTable) do
+        if lv >= q[1] and lv <= q[2] then
+            return q[3], q[4]
+        end
+    end
+    return nil, nil
+end
+
+local function HasQuest()
+    local gui = Player.PlayerGui:FindFirstChild("Quest", true)
+    return gui and gui.Visible
+end
+
+local function TweenTo(cf)
+    local char = Player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local dist = (hrp.Position - cf.Position).Magnitude
+    TweenService:Create(hrp, TweenInfo.new(dist / _G.TweenSpeed, Enum.EasingStyle.Linear), { CFrame = cf }):Play()
+end
+
+-- ระบบวิ่งไปรับเควสอัตโนมัติ
+local function AcceptQuest(questName)
+    local npc = workspace.TalkNpc.QuestGiver:FindFirstChild(questName)
+    if not npc or not npc.PrimaryPart then return end
+    
+    repeat
+        if not _G.AutoFarm then return end
+        TweenTo(npc.PrimaryPart.CFrame)
+        task.wait(0.2)
+
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        task.wait(2)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+
+        for i = 1, 2 do
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            task.wait(0.05)
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+            task.wait(0.01)
+        end
+
+        for _, v in ipairs(Player.PlayerGui:GetDescendants()) do
+            if not _G.AutoFarm then return end
+            if (v:IsA("TextButton") or v:IsA("ImageButton")) and v.Visible then
+                local label = v:FindFirstChildWhichIsA("TextLabel")
+                if (label and label.Text:find("Understood")) or (v:IsA("TextButton") and v.Text:find("Understood")) then
+                    GuiService.SelectedObject = v
+                    task.wait()
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+                    task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+                    break
+                end
+            end
+        end
+        task.wait(0.1)
+    until HasQuest() or not _G.AutoFarm
+end
+
+-- ระบบจัดการแท่นลอยฟาร์มกันตกแมพ
+local currentTween = nil
+local platformPart = nil
+
+local function CreatePlatform()
+    if not platformPart or not platformPart.Parent then
+        platformPart = Instance.new("Part")
+        platformPart.Name = "FarmPlatform"
+        platformPart.Size = Vector3.new(10, 1, 10)
+        platformPart.Anchored = true
+        platformPart.Transparency = 1
+        platformPart.CanCollide = true
+        platformPart.Parent = workspace
+    end
+    return platformPart
+end
+
+local function RemovePlatform()
+    if platformPart and platformPart.Parent then
+        platformPart:Destroy()
+        platformPart = nil
+    end
+end
+
+-- วาร์ปเคลื่อนที่เข้าหามอนสเตอร์
+local function TweenToEnemy(enemyHRP)
+    local char = Player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local y = _G.DistanceFromEnemy
+    if _G.FlyPosition == "Below" then
+        y = -math.abs(_G.DistanceFromEnemy)
+    else
+        y = math.abs(_G.DistanceFromEnemy)
+    end
+
+    local targetPos = enemyHRP.Position + Vector3.new(0, y, 0)
+    local dist = (hrp.Position - targetPos).Magnitude
+
+    if dist < 3 then
+        hrp.CFrame = CFrame.lookAt(targetPos, enemyHRP.Position)
+        hrp.Velocity = Vector3.zero
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+        local platform = CreatePlatform()
+        platform.CFrame = CFrame.new(targetPos.X, targetPos.Y - 3, targetPos.Z)
+        return
+    end
+
+    local platform = CreatePlatform()
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = false end
+    end
+
+    if currentTween then currentTween:Cancel() end
+
+    platform.CFrame = CFrame.new(targetPos.X, targetPos.Y - 3, targetPos.Z)
+    local targetCFrame = CFrame.lookAt(targetPos, enemyHRP.Position)
+    local tweenTime = dist / _G.TweenSpeed
+
+    currentTween = TweenService:Create(hrp, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), { CFrame = targetCFrame })
+    currentTween:Play()
+    TweenService:Create(platform, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), { CFrame = CFrame.new(targetPos.X, targetPos.Y - 3, targetPos.Z) }):Play()
+end
+
+local function FindEnemy(name)
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v.Name == name and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v:FindFirstChild("HumanoidRootPart") then
+            return v
+        end
+    end
+    return nil
+end
+
+local function StayOnPlatform()
+    local char = Player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local platform = CreatePlatform()
+    local currentPos = hrp.Position
+    platform.CFrame = CFrame.new(currentPos.X, currentPos.Y - 3, currentPos.Z)
+    hrp.Velocity = Vector3.zero
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+end
+
+-- ลูปหลักการทำงานฟาร์มเลเวลและรับเควสอัตโนมัติ
+task.spawn(function()
+    while task.wait(0.25) do
+        if not _G.AutoFarm then
+            RemovePlatform()
+            continue
+        end
+
+        local questName, enemyNames = GetQuestData()
+        if not questName or not enemyNames then
+            StayOnPlatform()
+            continue
+        end
+
+        if not HasQuest() then
+            AcceptQuest(questName)
+            continue
+        end
+
+        local enemiesToFarm = {}
+        if type(enemyNames) == "string" and enemyNames ~= "" then
+            for name in string.gmatch(enemyNames, "[^,]+") do
+                local cleanName = name:match("^%s*(.-)%s*$")
+                if cleanName ~= "" then table.insert(enemiesToFarm, cleanName) end
+            end
+        end
+
+        local foundAnyEnemy = false
+        for _, enemyName in ipairs(enemiesToFarm) do
+            local enemy = FindEnemy(enemyName)
+            if enemy then
+                foundAnyEnemy = true
+                repeat
+                    if not _G.AutoFarm then break end
+                    TweenToEnemy(enemy.HumanoidRootPart)
+                    NormalAttack()
+                    task.wait(_G.AttackDelay)
+                until enemy.Humanoid.Health <= 0 or not enemy.Parent
+                break
+            end
+        end
+
+        if not foundAnyEnemy then
+            StayOnPlatform()
+        end
+    end
+end)
+
+-- ==========================================
+-- UI CONTROLS (เหลือเฉพาะฟังก์ชันที่จำเป็น)
+-- ==========================================
+
+Section:NewToggle({
+    Title = "Auto Farm Level + Quest",
+    Default = false,
+    Callback = function(tr)
+        _G.AutoFarm = tr
+        if tr and not hasInitialized then
+            hasInitialized = true
+            task.wait(0.5)
+            PressE()
+        end
+    end
+})
+
+Section:NewSlider({
+    Title = "Distance From Enemy",
+    Min = 1,
+    Max = 100,
+    Default = _G.DistanceFromEnemy,
+    Callback = function(val)
+        _G.DistanceFromEnemy = val
+    end
+})
+
+Section:NewDropdown({
+    Title = "Fly Position",
+    Data = {"Above", "Below"},
+    Default = _G.FlyPosition,
+    Callback = function(val)
+        _G.FlyPosition = val
+    end
+})
+
+Section:NewSlider({
+    Title = "Tween Speed",
+    Min = 50,
+    Max = 500,
+    Default = _G.TweenSpeed,
+    Callback = function(val)
+        _G.TweenSpeed = val
+    end
+})
