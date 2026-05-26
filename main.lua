@@ -173,8 +173,8 @@ local QuestTable = {
     {550, 599, "QuestGiver (Lv.550-Lv.600)", "Akira"},
     {600, 699, "QuestGiver (Lv.600-Lv.700)", "Enforcer"},
     {700, 800, "QuestGiver (Lv.700-Lv.800)", "Phantom"},
-{1100, 1200, "QuestGiver (Lv.1100-Lv.1200)", "Faulty Tatara Ghoul},
-	}
+    {1100, 1200, "QuestGiver (Lv.1100-Lv.1200)", "Faulty Tatara Ghoul"},
+}
 
 local function GetQuestData()
     local lv = GetLevel()
