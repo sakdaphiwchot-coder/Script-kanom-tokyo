@@ -388,3 +388,23 @@ Section:NewSlider({
         _G.TweenSpeed = val
     end
 })
+-- สคริปต์เสริม: ปรับความเร็วการตีและเปิดออโต้โจมตี
+getgenv().AutoAttack = true -- เปิดใช้งานตีออโต้
+getgenv().AttackSpeed = 0.01 -- ปรับความเร็ว (ตัวเลขยิ่งน้อยยิ่งเร็ว)
+
+spawn(function()
+    while getgenv().AutoAttack do
+        -- คำสั่งจำลองการโจมตี (คุณอาจต้องเปลี่ยนชื่อฟังก์ชันให้ตรงกับตัวเกม)
+        local args = {
+            [1] = "Attack" -- ส่วนใหญ่มักใช้คำว่า "Attack" หรือ "Click"
+        }
+        
+        -- ปรับแก้ชื่อ RemoteEvent ให้ตรงกับเกมที่คุณเล่น
+        -- ส่วนใหญ่จะอยู่ใน game:GetService("ReplicatedStorage")
+        pcall(function()
+            game:GetService("ReplicatedStorage").Remotes.Input:FireServer(unpack(args))
+        end)
+        
+        task.wait(getgenv().AttackSpeed)
+    end
+end)
