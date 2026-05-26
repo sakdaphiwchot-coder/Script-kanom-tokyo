@@ -162,6 +162,7 @@ end
 
 -- Quest Data (Updated)
 local QuestTable = {
+local QuestTable = {
     {1, 49, "QuestGiver (Lv.1-Lv.50)", "Human,Athlete"},
     {50, 149, "QuestGiver (Lv.50-Lv.150)", "Rank 2 Investigator"},
     {150, 249, "QuestGiver (Lv.150-Lv.250)", "Bulk Ghoul"},
@@ -172,8 +173,8 @@ local QuestTable = {
     {500, 549, "QuestGiver (Lv.500-Lv.550)", "Aogiri"},
     {550, 599, "QuestGiver (Lv.550-Lv.600)", "Akira"},
     {600, 699, "QuestGiver (Lv.600-Lv.700)", "Enforcer"},
-    {700, 800, "QuestGiver (Lv.700-Lv.800)", "Phantom"}
-{1100, 1200, "QuestGiver (Lv.1100-Lv.1200)", "Faulty Tatara Ghoul},
+    {700, 800, "QuestGiver (Lv.700-Lv.800)", "Phantom"},
+    {1100, 1200, "QuestGiver (Lv.1100-Lv.1200)", "Faulty Tatara Ghoul"},
 	}
 
 local function GetQuestData()
